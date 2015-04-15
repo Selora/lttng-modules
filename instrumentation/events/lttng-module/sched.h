@@ -6,6 +6,7 @@
 
 #include "../../../probes/lttng-tracepoint-event.h"
 #include <linux/sched.h>
+#include <linux/pid_namespace.h>
 #include <linux/binfmts.h>
 #include <linux/version.h>
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0))
@@ -298,9 +299,57 @@ LTTNG_TRACEPOINT_EVENT(sched_process_fork,
 		ctf_array_text(char, parent_comm, parent->comm, TASK_COMM_LEN)
 		ctf_integer(pid_t, parent_tid, parent->pid)
 		ctf_integer(pid_t, parent_pid, parent->tgid)
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,8,0))
+		ctf_integer(unsigned int, parent_ns_inum,
+			({
+				unsigned int parent_ns_inum = 0;
+				struct pid_namespace* pid_ns;
+				if (parent) {
+					pid_ns = task_active_pid_ns(parent);
+					if(pid_ns){
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,19,0))
+						parent_ns_inum = pid_ns->ns.inum;
+#else
+						parent_ns_inum = pid_ns->proc_inum;
+#endif
+					}
+				}
+				parent_ns_inum;
+			}))
+#endif
 		ctf_array_text(char, child_comm, child->comm, TASK_COMM_LEN)
 		ctf_integer(pid_t, child_tid, child->pid)
+		ctf_integer(pid_t, child_vtid,
+			({
+				pid_t ret = -1;
+				int ns_level = 0;
+				struct pid* child_pid;
+				if (child) {
+					child_pid = task_pid(child);
+					ns_level = child_pid->level;
+					ret = child_pid->numbers[ns_level].nr;
+				}
+				ret;
+			}))
 		ctf_integer(pid_t, child_pid, child->tgid)
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,8,0))
+		ctf_integer(unsigned int, child_ns_inum,
+			({
+			unsigned int child_ns_inum = 0;
+			struct pid_namespace* pid_ns;
+			if (child) {
+				pid_ns = task_active_pid_ns(child);
+				if(pid_ns){
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,19,0))
+					child_ns_inum = pid_ns->ns.inum;
+#else
+					child_ns_inum = pid_ns->proc_inum;
+#endif
+				}
+			}
+			child_ns_inum;
+			}))
+#endif
 	)
 )
 

@@ -8,6 +8,7 @@
 #include <linux/nsproxy.h>
 #include <linux/pid_namespace.h>
 #include <linux/types.h>
+#include <linux/version.h>
 
 LTTNG_TRACEPOINT_EVENT(lttng_statedump_start,
 	TP_PROTO(struct lttng_session *session),
@@ -60,6 +61,11 @@ LTTNG_TRACEPOINT_EVENT(lttng_statedump_process_state,
 		ctf_integer(int, submode, submode)
 		ctf_integer(int, status, status)
 		ctf_integer(int, ns_level, pid_ns ? pid_ns->level : 0)
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,19,0))
+		ctf_integer(unsigned int, ns_inum, pid_ns ? pid_ns->ns.inum: 0)
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(3,8,0))
+		ctf_integer(unsigned int, ns_inum, pid_ns ? pid_ns->proc_inum: 0)
+#endif
 	)
 )
 
